@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Secrets</title>
+        <link href="/style.css" rel="stylesheet">
+    </head>
+    <body>
+        <button type="button" id="show-token">Show</button>
+        <div id="secret-container" style="display: none;">
+            <div>
+                <p>Data:</p>
+                <textarea id="secret-data"></textarea>
+            </div>
+            <p>Views remaining: <span id="views-remaining"></span></p>
+            <p>Expiration date: <span id="expiration-date"></span></p>
+        </div>
+        <script type="module">
+            const secretContainer = document.getElementById("secret-container");
+            const secretDataEl = document.getElementById("secret-data");
+            const secretViewsRemainingEl = document.getElementById("views-remaining");
+            const secretExpirationDateEl = document.getElementById("expiration-date");
+
+            const showTokenBtn = document.getElementById("show-token");
+            showTokenBtn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                const searchParams = new URLSearchParams(location.search);
+                const id = searchParams.get("id");
+                if (!id) {
+                    alert("Missing token id");
+                    return;
+                }
+
+                const response = await fetch(`/token?id=${id}`).catch(_ => null);
+
+                if (!response || !response.ok) {
+                    alert("Invalid token");
+                    return;
+                }
+
+                const secret = await response.json();
+
+                secretContainer.style.display = "initial";
+                secretDataEl.value = secret.data;
+                secretViewsRemainingEl.textContent = secret.views_remaining;
+
+                secretExpirationDateEl.textContent = secret.expiration_date;
+            });
+        </script>
+    </body>
+</html>

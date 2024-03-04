@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Secrets</title>
+        <link href="/style.css" rel="stylesheet">
+    </head>
+    <body>
+        <h1>Hello, world!</h1>
+        <form id="token-submit">
+            <label>
+                <p>Secret:</p>
+                <textarea name="data" focus></textarea>
+            </label>
+            <label>
+                <p>Max Views: <span id="max-views-value"></span></p>
+                <input type="range" min="1" max="30" name="maxViews" value="2">
+            </label>
+            <label>
+                <p>Expiration date in days: <span id="time-limit-value"></span></p>
+                <input type="range" min="1" max="30" name="timeLimit" value="2">
+            </label>
+            <button type="submit">Create link</button>
+        </form>
+        <div style="display: none; font-size: 16px;" id="secret-container">
+            <textarea id="secret-link-id" readonly></textarea>
+            <input type="text" id="secret-link" readonly>
+            <button type="button" id="copy-secret-link">Copy link</button>
+        </div>
+        <script>
+            const secretLinkIdEl = document.getElementById("secret-link-id");
+            const secretLinkEl = document.getElementById("secret-link");
+            const secretContainer = document.getElementById("secret-container");
+            const copySecretLinkBtn = document.getElementById("copy-secret-link");
+
+            copySecretLinkBtn.addEventListener("click", e => {
+                e.preventDefault();
+                navigator.clipboard.writeText(secretLinkEl.value);
+            });
+
+            const form = document.getElementById("token-submit");
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const formData = new FormData(form);
+                const data = Object.fromEntries(formData.entries());
+
+                const response = await fetch("/create-secret", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify(data),
+                });
+                if (!response.ok) {
+                    return null;
+                }
+
+                const secret = await response.json();
+                secretContainer.style.display = "initial";
+                secretLinkIdEl.value = secret.secret;
+
+                const url = new URL(`/secret?id=${secret.secret}`, location.origin);
+
+                secretLinkEl.value = url.href;
+            });
+
+            const expirationDateInput = form["timeLimit"];
+            const expirationDateValueEl = document.getElementById("time-limit-value");
+            expirationDateValueEl.textContent = expirationDateInput.value;
+            expirationDateInput.addEventListener("input", e => {
+                expirationDateValueEl.textContent = e.currentTarget.value;
+            });
+
+            const maxViewsInput = form["maxViews"];
+            const maxViewsValueEl = document.getElementById("max-views-value");
+            maxViewsValueEl.textContent = maxViewsInput.value;
+            maxViewsInput.addEventListener("input", e => {
+                maxViewsValueEl.textContent = e.currentTarget.value;
+            });
+
+        </script>
+    </body>
+</html>
