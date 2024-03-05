@@ -34,7 +34,7 @@
                     return;
                 }
 
-                const response = await fetch(`/token?id=${id}`).catch(_ => null);
+                const response = await fetch(`/api/secret?id=${id}`).catch(_ => null);
 
                 if (!response || !response.ok) {
                     alert("Invalid token");

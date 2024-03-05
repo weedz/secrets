@@ -54,9 +54,6 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
         if (url.pathname === "/") {
             return await sendStaticFile(reply, "./public/index.html", 200, { "content-type": "text/html" });
         }
-        else if (url.pathname === "/client.js") {
-            return await sendStaticFile(reply, "./public/client.js", 200, { "content-type": "application/javascript" });
-        }
         else if (url.pathname === "/style.css") {
             return await sendStaticFile(reply, "./public/style.css", 200, { "content-type": "text/css" });
         }
@@ -68,7 +65,7 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
 
             return await sendStaticFile(reply, "./public/token.html", 200, { "content-type": "text/html" });
         }
-        else if (url.pathname === "/token") {
+        else if (url.pathname === "/api/secret") {
             const id = url.searchParams.get("id");
             if (!id) {
                 return reply.writeHead(400).end();
@@ -84,7 +81,7 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
         }
     }
     else if (req.method === "POST") {
-        if (url.pathname === "/create-secret") {
+        if (url.pathname === "/api/create-secret") {
             if (rateLimitPost >= REQUESTS_RATE_LIMIT) {
                 reply.writeHead(429);
                 return reply.end();

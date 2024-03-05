@@ -55,7 +55,7 @@
                 const formData = new FormData(form);
                 const data = Object.fromEntries(formData.entries());
 
-                const response = await fetch("/create-secret", {
+                const response = await fetch("/api/create-secret", {
                     method: "POST",
                     headers: { "content-type": "application/json" },
                     body: JSON.stringify(data),
