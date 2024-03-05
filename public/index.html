@@ -7,29 +7,31 @@
         <link href="/style.css" rel="stylesheet">
     </head>
     <body>
-        <h1>Hello, world!</h1>
-        <form id="token-submit">
-            <label>
-                <p>Secret:</p>
-                <textarea name="data" focus></textarea>
-            </label>
-            <label>
-                <p>Max Views: <span id="max-views-value"></span></p>
-                <input type="range" min="1" max="30" name="maxViews" value="2">
-            </label>
-            <label>
-                <p>Expiration date in days: <span id="time-limit-value"></span></p>
-                <input type="range" min="1" max="30" name="timeLimit" value="2">
-            </label>
-            <button type="submit">Create link</button>
-        </form>
-        <div style="display: none; font-size: 16px;" id="secret-container">
-            <textarea id="secret-link-id" readonly></textarea>
-            <input type="text" id="secret-link" readonly>
+        <div class="container">
+            <form id="token-submit" class="flex-column">
+                <label class="contents">
+                    <p>Secret:</p>
+                    <textarea name="data" autofocus rows="5" style="resize: vertical;" placeholder="Enter the data"></textarea>
+                </label>
+                <div class="expiration-limits">
+                    <label>
+                        <p>Max Views: <span id="max-views-value"></span></p>
+                        <input type="range" min="1" max="30" name="maxViews" value="2">
+                    </label>
+                    <label>
+                        <p>Expiration in days: <span id="time-limit-value"></span></p>
+                        <input type="range" min="1" max="30" name="timeLimit" value="2">
+                    </label>
+                </div>
+                <button type="submit">Create link</button>
+            </form>
+        </div>
+        <div class="container" style="display: none;" id="secret-container">
+            <p>Secret link</p>
+            <input type="text" id="secret-link" readonly value="http://localhost:8080/secret?id=MViaD6rejudegsMnt-LGEyi0MM7qQlOK5KeYi_TJbrvL4Zb1">
             <button type="button" id="copy-secret-link">Copy link</button>
         </div>
         <script>
-            const secretLinkIdEl = document.getElementById("secret-link-id");
             const secretLinkEl = document.getElementById("secret-link");
             const secretContainer = document.getElementById("secret-container");
             const copySecretLinkBtn = document.getElementById("copy-secret-link");
@@ -37,6 +39,14 @@
             copySecretLinkBtn.addEventListener("click", e => {
                 e.preventDefault();
                 navigator.clipboard.writeText(secretLinkEl.value);
+
+                const initialButtonText = copySecretLinkBtn.textContent;
+                copySecretLinkBtn.textContent = "Copied!";
+                copySecretLinkBtn.disabled = true;
+                setTimeout(() => {
+                    copySecretLinkBtn.textContent = initialButtonText;
+                    copySecretLinkBtn.disabled = false;
+                }, 3000);
             });
 
             const form = document.getElementById("token-submit");
@@ -51,12 +61,16 @@
                     body: JSON.stringify(data),
                 });
                 if (!response.ok) {
+                    if (response.status === 429) {
+                        alert("Rate limit exceeded. Try again in 30 seconds.");
+                    } else {
+                        alert("Unknown error. Try again later.");
+                    }
                     return null;
                 }
 
                 const secret = await response.json();
-                secretContainer.style.display = "initial";
-                secretLinkIdEl.value = secret.secret;
+                secretContainer.style.display = "";
 
                 const url = new URL(`/secret?id=${secret.secret}`, location.origin);
 

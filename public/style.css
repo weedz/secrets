@@ -11,6 +11,23 @@ html,
 body {
     background: #121212;
     font-size: 16px;
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 11px;
+}
+
+p {
+    margin-top: 0.4em;
+    margin-bottom: 0.4em;
 }
 
 ul {
@@ -32,6 +49,7 @@ textarea {
     background: #222;
     border: 1px solid #777;
     border-radius: 2px;
+    font-size: 16px;
 }
 
 button:not(:disabled):hover {
@@ -47,4 +65,37 @@ textarea:focus {
 button:disabled,
 input:disabled {
     cursor: not-allowed;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    max-width: 800px;
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #777;
+    box-sizing: border-box;
+}
+
+.expiration-limits {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.expiration-limits>* {
+    min-width: 250px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.contents {
+    display: contents;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
 }

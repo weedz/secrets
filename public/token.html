@@ -7,14 +7,16 @@
         <link href="/style.css" rel="stylesheet">
     </head>
     <body>
-        <button type="button" id="show-token">Show</button>
-        <div id="secret-container" style="display: none;">
-            <div>
-                <p>Data:</p>
-                <textarea id="secret-data"></textarea>
+        <div class="container">
+            <button type="button" id="show-token">Show</button>
+            <div id="secret-container" style="display: none;">
+                <div class="flex-column">
+                    <textarea id="secret-data" rows="5" style="resize: vertical;" readonly></textarea>
+                </div>
+                <button type="button" id="copy-data-btn">Copy data</button>
+                <p>Views remaining: <span id="views-remaining"></span></p>
+                <p>Expiration date: <span id="expiration-date"></span></p>
             </div>
-            <p>Views remaining: <span id="views-remaining"></span></p>
-            <p>Expiration date: <span id="expiration-date"></span></p>
         </div>
         <script type="module">
             const secretContainer = document.getElementById("secret-container");
@@ -41,11 +43,26 @@
 
                 const secret = await response.json();
 
-                secretContainer.style.display = "initial";
+                secretContainer.style.display = "";
                 secretDataEl.value = secret.data;
                 secretViewsRemainingEl.textContent = secret.views_remaining;
-
                 secretExpirationDateEl.textContent = secret.expiration_date;
+
+                showTokenBtn.remove();
+            });
+
+            const copyDataBtn = document.getElementById("copy-data-btn");
+            copyDataBtn.addEventListener("click", e => {
+                e.preventDefault();
+                navigator.clipboard.writeText(secretDataEl.value);
+
+                const initialButtonText = copyDataBtn.textContent;
+                copyDataBtn.textContent = "Copied!";
+                copyDataBtn.disabled = true;
+                setTimeout(() => {
+                    copyDataBtn.textContent = initialButtonText;
+                    copyDataBtn.disabled = false;
+                }, 3000);
             });
         </script>
     </body>
