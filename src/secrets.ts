@@ -69,16 +69,14 @@ export async function getSecret(id: string) {
 }
 
 export async function createSecret(data: string, views: number, expirationDate: number) {
-    // FIXME: Validate expiration date
-
     const id = nanoid(48);
     const hashedId = hashId(id);
 
     const encryptedData = encryptDataWithId(id, data);
 
     await db.execute({
-        sql: "insert into secrets(id, views_remaining, data, expiration_date) values (?, ?, ?, ?)",
-        args: [hashedId, views, encryptedData, new Date(expirationDate).toISOString()]
+        sql: "insert into secrets(id, views_remaining, data, expiration_date) values (?, ?, ?, datetime(?, 'unixepoch'))",
+        args: [hashedId, views, encryptedData, Math.floor(expirationDate / 1000)]
     });
 
     return id;

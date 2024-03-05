@@ -3,6 +3,35 @@ import { createReadStream } from "node:fs";
 import { finished } from "node:stream/promises";
 import { createSecret, getSecret } from "./secrets.js";
 import { env } from "./env.js";
+import { db } from "./db.js";
+
+const REQUESTS_RATE_LIMIT = 100;
+const IP_RATE_LIMIT_TIME = 30000;
+
+let rateLimitPost = 0;
+const rateLimitIPs = new Map<string, number>();
+setInterval(() => {
+    const now = Date.now();
+    if (rateLimitPost > 0) {
+        rateLimitPost -= 1;
+    }
+    for (const item of rateLimitIPs) {
+        if (item[1] > now) {
+            // Maps are guaranteed to be ordered by insertions
+            break;
+        }
+        rateLimitIPs.delete(item[0]);
+    }
+}, 5000);
+
+setInterval(async () => {
+    await db.execute({
+        sql: "delete from secrets where expiration_date < datetime(?, 'unixepoch')",
+        args: [Date.now() / 1000],
+    })
+}, 3600000);
+
+
 
 async function sendStaticFile(reply: http.ServerResponse, filePath: string, status?: number, headers?: http.OutgoingHttpHeaders) {
     const index = createReadStream(filePath);
@@ -20,7 +49,6 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
     }
 
     const url = new URL(req.url, "http://localhost");
-    // console.log("URL:", url);
 
     if (req.method === "GET") {
         if (url.pathname === "/") {
@@ -57,6 +85,17 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
     }
     else if (req.method === "POST") {
         if (url.pathname === "/create-secret") {
+            if (rateLimitPost >= REQUESTS_RATE_LIMIT) {
+                reply.writeHead(429);
+                return reply.end();
+            }
+            if (!req.socket.remoteAddress || rateLimitIPs.has(req.socket.remoteAddress)) {
+                reply.writeHead(429);
+                return reply.end();
+            }
+            rateLimitIPs.set(req.socket.remoteAddress, Date.now() + IP_RATE_LIMIT_TIME);
+            rateLimitPost++;
+
             const DATA_SIZE_LIMIT = 128 * 1024; // 128 KiB
             if (req.headers["content-type"] !== "application/json") {
                 reply.writeHead(400);
