@@ -10,15 +10,11 @@ function hashId(id: string) {
 
 function encryptDataWithId(id: string, data: string) {
     const cipher = crypto.createCipheriv("aes-256-cbc", id.slice(0, 32), id.slice(32));
-    cipher.update(data);
-
-    return cipher.final("base64");
+    return Buffer.concat([cipher.update(data), cipher.final()]).toString("base64");
 }
 function decryptDataWithId(id: string, encryptedData: Buffer) {
     const decipher = crypto.createDecipheriv("aes-256-cbc", id.slice(0, 32), id.slice(32));
-    decipher.update(encryptedData);
-
-    return decipher.final("utf8");
+    return Buffer.concat([decipher.update(encryptedData), decipher.final()]).toString("utf-8");
 }
 
 async function deleteSecret(hashedId: string) {
