@@ -5,7 +5,6 @@ export const env = (() => {
     const host = process.env.HOST || undefined;
 
     return {
-        ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || "the secret sauce",
         PORT: port,
         HOST: host,
     };
