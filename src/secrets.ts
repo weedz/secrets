@@ -9,11 +9,11 @@ function hashId(id: string) {
 }
 
 function encryptDataWithId(id: string, data: string) {
-    const cipher = crypto.createCipheriv("aes-256-cbc", id.slice(0, 32), id.slice(32));
+    const cipher = crypto.createCipheriv("aes-256-cbc", id.slice(0, 32), id.slice(-16));
     return Buffer.concat([cipher.update(data), cipher.final()]).toString("base64");
 }
 function decryptDataWithId(id: string, encryptedData: Buffer) {
-    const decipher = crypto.createDecipheriv("aes-256-cbc", id.slice(0, 32), id.slice(32));
+    const decipher = crypto.createDecipheriv("aes-256-cbc", id.slice(0, 32), id.slice(-16));
     return Buffer.concat([decipher.update(encryptedData), decipher.final()]).toString("utf-8");
 }
 
@@ -54,10 +54,14 @@ export async function getSecret(id: string) {
     // To account for _this_ viewing of the secret
     secret.views_remaining -= 1;
 
-    await db.execute({
-        sql: "update secrets set views_remaining = views_remaining - 1 where id = ?",
-        args: [hashedId],
-    });
+    if (secret.views_remaining <= 0) {
+        deleteSecret(hashedId);
+    } else {
+        await db.execute({
+            sql: "update secrets set views_remaining = views_remaining - 1 where id = ?",
+            args: [hashedId],
+        });
+    }
 
     secret.data = decryptDataWithId(id, Buffer.from(secret.data, "base64"));
 
@@ -67,7 +71,6 @@ export async function getSecret(id: string) {
 export async function createSecret(data: string, views: number, expirationDate: number) {
     const id = nanoid(48);
     const hashedId = hashId(id);
-
     const encryptedData = encryptDataWithId(id, data);
 
     await db.execute({

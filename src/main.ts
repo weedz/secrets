@@ -1,12 +1,14 @@
 import * as http from "node:http";
 import { createReadStream } from "node:fs";
 import { finished } from "node:stream/promises";
+
 import { createSecret, getSecret } from "./secrets.js";
 import { env } from "./env.js";
 import { db } from "./db.js";
 
 const REQUESTS_RATE_LIMIT = 100;
 const IP_RATE_LIMIT_TIME = 30000;
+const DATA_SIZE_LIMIT = 128 * 1024; // 128 KiB
 
 let rateLimitPost = 0;
 const rateLimitIPs = new Map<string, number>();
@@ -93,7 +95,6 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
             rateLimitIPs.set(req.socket.remoteAddress, Date.now() + IP_RATE_LIMIT_TIME);
             rateLimitPost++;
 
-            const DATA_SIZE_LIMIT = 128 * 1024; // 128 KiB
             if (req.headers["content-type"] !== "application/json") {
                 reply.writeHead(400);
                 return reply.end();
@@ -120,26 +121,23 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
 
                 // Validate json
                 if (!json.data || typeof json.data !== "string") {
-                    // INVALID
                     reply.writeHead(400);
                     return reply.end();
                 }
 
                 const maxViews = Number.parseInt(json.maxViews, 10);
                 if (Number.isNaN(maxViews) || maxViews <= 0 || maxViews > 100) {
-                    // INVALID
                     reply.writeHead(400);
                     return reply.end();
                 }
 
-                const timeLimit = Number.parseInt(json.timeLimit, 10);
-                if (Number.isNaN(timeLimit) || timeLimit <= 0 || timeLimit > 30) {
-                    // INVALID
+                const expirationLimitInDays = Number.parseInt(json.timeLimit, 10);
+                if (Number.isNaN(expirationLimitInDays) || expirationLimitInDays <= 0 || expirationLimitInDays > 30) {
                     reply.writeHead(400);
                     return reply.end();
                 }
 
-                const secret = await createSecret(json.data, maxViews, Date.now() + (86400000 * timeLimit));
+                const secret = await createSecret(json.data, maxViews, Date.now() + (86400000 * expirationLimitInDays));
                 reply.writeHead(200, undefined, { "content-type": "application/json" }).write(JSON.stringify({ secret }));
                 return reply.end();
             } catch (err) {
@@ -147,12 +145,6 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
                 reply.writeHead(500);
                 return reply.end();
             }
-        }
-        else if (url.pathname === "/post") {
-            const result = await createSecret("Hello, world!", 5, Date.now() + 600000);
-
-            reply.writeHead(200, undefined, { "content-type": "application/json" }).write(JSON.stringify({ id: result }));
-            return reply.end();
         }
     }
 
