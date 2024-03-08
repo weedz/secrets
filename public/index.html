@@ -80,7 +80,7 @@
                 const secret = await response.json();
                 secretContainer.style.display = "";
 
-                const url = new URL(`/secret?id=${secret.secret}`, location.origin);
+                const url = new URL(`/secret?id=${secret.id}&auth=${secret.auth}`, location.origin);
 
                 secretLinkEl.value = url.href;
             });

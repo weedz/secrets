@@ -69,17 +69,23 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
         }
         else if (url.pathname === "/api/secret") {
             const id = url.searchParams.get("id");
-            if (!id) {
+            const authTag = url.searchParams.get("auth");
+            if (!id || !authTag) {
                 return reply.writeHead(400).end();
             }
 
-            const secret = await getSecret(id);
-            if (!secret) {
-                return reply.writeHead(404).end();
-            }
+            try {
+                const secret = await getSecret(id, authTag);
+                if (!secret) {
+                    return reply.writeHead(404).end();
+                }
 
-            reply.writeHead(200, undefined, { "content-type": "application/json" }).write(JSON.stringify(secret));
-            return reply.end();
+                reply.writeHead(200, undefined, { "content-type": "application/json" }).write(JSON.stringify(secret));
+                return reply.end();
+            } catch (err) {
+                // console.error("[GET api/secret] Error:", err);
+                return reply.writeHead(400).end();
+            }
         }
     }
     else if (req.method === "POST") {
@@ -138,10 +144,10 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
                 }
 
                 const secret = await createSecret(json.data, maxViews, Date.now() + (86400000 * expirationLimitInDays));
-                reply.writeHead(200, undefined, { "content-type": "application/json" }).write(JSON.stringify({ secret }));
+                reply.writeHead(200, undefined, { "content-type": "application/json" }).write(JSON.stringify({ id: secret.id, auth: secret.authTag.toString("base64url") }));
                 return reply.end();
             } catch (err) {
-                console.log("Error:", err);
+                // console.log("[POST api/create-secret] Error:", err);
                 reply.writeHead(500);
                 return reply.end();
             }

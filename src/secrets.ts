@@ -1,19 +1,22 @@
 import * as crypto from "node:crypto";
 
-import { nanoid } from "nanoid";
-
 import { db } from "./db.js";
 
-function hashId(id: string) {
-    return crypto.createHash("sha256").update(id).digest().toString("base64");
+function hashId(id: Buffer) {
+    return crypto.createHash("sha256").update(id).digest().toString("base64url");
 }
 
-function encryptDataWithId(id: string, data: string) {
-    const cipher = crypto.createCipheriv("aes-256-cbc", id.slice(0, 32), id.slice(-16));
-    return Buffer.concat([cipher.update(data), cipher.final()]).toString("base64");
+function encryptDataWithId(id: Buffer, data: string) {
+    const cipher = crypto.createCipheriv("aes-256-gcm", id.subarray(0, 32), id.subarray(-16), { authTagLength: 16 });
+
+    const encryptedData = Buffer.concat([cipher.update(data), cipher.final()]).toString("base64");
+    const authTag = cipher.getAuthTag();
+
+    return { data: encryptedData, authTag };
 }
-function decryptDataWithId(id: string, encryptedData: Buffer) {
-    const decipher = crypto.createDecipheriv("aes-256-cbc", id.slice(0, 32), id.slice(-16));
+function decryptDataWithId(id: Buffer, authTag: Buffer, encryptedData: Buffer) {
+    const decipher = crypto.createDecipheriv("aes-256-gcm", id.subarray(0, 32), id.subarray(-16), { authTagLength: 16 });
+    decipher.setAuthTag(authTag);
     return Buffer.concat([decipher.update(encryptedData), decipher.final()]).toString("utf-8");
 }
 
@@ -24,7 +27,8 @@ async function deleteSecret(hashedId: string) {
     });
 }
 
-export async function getSecret(id: string) {
+export async function getSecret(idBase64: string, authTag: string) {
+    const id = Buffer.from(idBase64, "base64");
     const hashedId = hashId(id);
     const secretRows = await db.execute({
         sql: "select data, views_remaining, expiration_date from secrets where id = ?",
@@ -63,20 +67,20 @@ export async function getSecret(id: string) {
         });
     }
 
-    secret.data = decryptDataWithId(id, Buffer.from(secret.data, "base64"));
+    secret.data = decryptDataWithId(id, Buffer.from(authTag, "base64url"), Buffer.from(secret.data, "base64"));
 
     return secret;
 }
 
 export async function createSecret(data: string, views: number, expirationDate: number) {
-    const id = nanoid(48);
+    const id = crypto.randomBytes(48);
     const hashedId = hashId(id);
-    const encryptedData = encryptDataWithId(id, data);
+    const { data: encryptedData, authTag } = encryptDataWithId(id, data);
 
     await db.execute({
         sql: "insert into secrets(id, views_remaining, data, expiration_date) values (?, ?, ?, datetime(?, 'unixepoch'))",
         args: [hashedId, views, encryptedData, Math.floor(expirationDate / 1000)]
     });
 
-    return id;
+    return { id: id.toString("base64url"), authTag };
 }

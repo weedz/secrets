@@ -17,7 +17,6 @@
         "typescript": "^5.3.3"
     },
     "dependencies": {
-        "@libsql/client": "^0.5.2",
-        "nanoid": "^5.0.6"
+        "@libsql/client": "^0.5.2"
     }
 }

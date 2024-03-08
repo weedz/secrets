@@ -37,12 +37,13 @@
                 e.preventDefault();
                 const searchParams = new URLSearchParams(location.search);
                 const id = searchParams.get("id");
-                if (!id) {
+                const auth = searchParams.get("auth");
+                if (!id || !auth) {
                     alert("Missing token id");
                     return;
                 }
 
-                const response = await fetch(`/api/secret?id=${id}`).catch(_ => null);
+                const response = await fetch(`/api/secret?id=${id}&auth=${auth}`).catch(_ => null);
 
                 if (!response || !response.ok) {
                     alert("Invalid token");
