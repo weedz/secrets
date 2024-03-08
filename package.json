@@ -5,18 +5,18 @@
     "type": "module",
     "main": "dist/main.js",
     "scripts": {
-        "dev": "concurrently \"tsc --watch\" \"sleep 1 && node --watch dist/main.js\"",
+        "dev": "concurrent-cmd \"[\\\"tsc --watch\\\", [\\\"sleep 1\\\", \\\"node --watch dist/main.js\\\"]]\"",
         "build": "tsc"
     },
     "keywords": [],
     "author": "",
     "license": "MIT",
     "devDependencies": {
-        "@types/node": "^20.11.24",
-        "concurrently": "^8.2.2",
-        "typescript": "^5.3.3"
+        "@types/node": "^20.11.25",
+        "@weedzcokie/concurrent-cmd": "^0.1.5",
+        "typescript": "^5.4.2"
     },
     "dependencies": {
-        "@libsql/client": "^0.5.2"
+        "@libsql/client": "^0.5.3"
     }
 }
