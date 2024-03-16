@@ -42,8 +42,8 @@ const staticFiles = {
         content: readFileSync("./public/style.css"),
         headers: { "content-type": "text/css" },
     },
-    "token.html": {
-        content: readFileSync("./public/token.html"),
+    "secret.html": {
+        content: readFileSync("./public/secret.html"),
         headers: { "content-type": "text/html" },
     },
 } as const;
@@ -74,7 +74,7 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
                 return reply.writeHead(400).end();
             }
 
-            return sendStaticFile(reply, "token.html");
+            return sendStaticFile(reply, "secret.html");
         }
         else if (url.pathname === "/api/secret") {
             const id = url.searchParams.get("id");
