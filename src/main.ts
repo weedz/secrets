@@ -1,10 +1,9 @@
+import { readFileSync } from "node:fs";
 import * as http from "node:http";
-import { createReadStream } from "node:fs";
-import { finished } from "node:stream/promises";
 
-import { createSecret, getSecret } from "./secrets.js";
-import { env } from "./env.js";
 import { db } from "./db.js";
+import { env } from "./env.js";
+import { createSecret, getSecret } from "./secrets.js";
 
 const REQUESTS_RATE_LIMIT = 100;
 const IP_RATE_LIMIT_TIME = 30000;
@@ -34,13 +33,23 @@ setInterval(async () => {
 }, 3600000);
 
 
-
-async function sendStaticFile(reply: http.ServerResponse, filePath: string, status?: number, headers?: http.OutgoingHttpHeaders) {
-    const index = createReadStream(filePath);
-    if (status) {
-        reply.writeHead(status, undefined, headers);
-    }
-    await finished(index.pipe(reply));
+const staticFiles = {
+    "index.html": {
+        content: readFileSync("./public/index.html"),
+        headers: { "content-type": "text/html" },
+    },
+    "style.css": {
+        content: readFileSync("./public/style.css"),
+        headers: { "content-type": "text/css" },
+    },
+    "token.html": {
+        content: readFileSync("./public/token.html"),
+        headers: { "content-type": "text/html" },
+    },
+} as const;
+function sendStaticFile(reply: http.ServerResponse, fileName: keyof typeof staticFiles) {
+    reply.writeHead(200, undefined, staticFiles[fileName].headers);
+    reply.write(staticFiles[fileName].content);
     return reply.end();
 }
 
@@ -54,10 +63,10 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
 
     if (req.method === "GET") {
         if (url.pathname === "/") {
-            return await sendStaticFile(reply, "./public/index.html", 200, { "content-type": "text/html" });
+            return sendStaticFile(reply, "index.html");
         }
         else if (url.pathname === "/style.css") {
-            return await sendStaticFile(reply, "./public/style.css", 200, { "content-type": "text/css" });
+            return sendStaticFile(reply, "style.css");
         }
         else if (url.pathname === "/secret") {
             const id = url.searchParams.get("id");
@@ -65,7 +74,7 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
                 return reply.writeHead(400).end();
             }
 
-            return await sendStaticFile(reply, "./public/token.html", 200, { "content-type": "text/html" });
+            return sendStaticFile(reply, "token.html");
         }
         else if (url.pathname === "/api/secret") {
             const id = url.searchParams.get("id");
@@ -91,31 +100,26 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
     else if (req.method === "POST") {
         if (url.pathname === "/api/create-secret") {
             if (rateLimitPost >= REQUESTS_RATE_LIMIT) {
-                reply.writeHead(429);
-                return reply.end();
+                return reply.writeHead(429).end();
             }
             if (!req.socket.remoteAddress || rateLimitIPs.has(req.socket.remoteAddress)) {
-                reply.writeHead(429);
-                return reply.end();
+                return reply.writeHead(429).end();
             }
             rateLimitIPs.set(req.socket.remoteAddress, Date.now() + IP_RATE_LIMIT_TIME);
             rateLimitPost++;
 
             if (req.headers["content-type"] !== "application/json") {
-                reply.writeHead(400);
-                return reply.end();
+                return reply.writeHead(400).end();
             }
             const buffer: Buffer[] = [];
             let readBytes = 0;
             for await (const chunk of req) {
                 if (!(chunk instanceof Buffer)) {
-                    reply.writeHead(400);
-                    return reply.end();
+                    return reply.writeHead(400).end();
                 }
                 readBytes += chunk.length;
                 if (readBytes > DATA_SIZE_LIMIT) {
-                    reply.writeHead(413);
-                    return reply.end();
+                    return reply.writeHead(413).end();
                 }
                 buffer.push(chunk);
             }
@@ -127,20 +131,17 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
 
                 // Validate json
                 if (!json.data || typeof json.data !== "string") {
-                    reply.writeHead(400);
-                    return reply.end();
+                    return reply.writeHead(400).end();
                 }
 
                 const maxViews = Number.parseInt(json.maxViews, 10);
                 if (Number.isNaN(maxViews) || maxViews <= 0 || maxViews > 100) {
-                    reply.writeHead(400);
-                    return reply.end();
+                    return reply.writeHead(400).end();
                 }
 
                 const expirationLimitInDays = Number.parseInt(json.timeLimit, 10);
                 if (Number.isNaN(expirationLimitInDays) || expirationLimitInDays <= 0 || expirationLimitInDays > 30) {
-                    reply.writeHead(400);
-                    return reply.end();
+                    return reply.writeHead(400).end();
                 }
 
                 const secret = await createSecret(json.data, maxViews, Date.now() + (86400000 * expirationLimitInDays));
@@ -148,8 +149,7 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
                 return reply.end();
             } catch (err) {
                 // console.log("[POST api/create-secret] Error:", err);
-                reply.writeHead(500);
-                return reply.end();
+                return reply.writeHead(500).end();
             }
         }
     }
