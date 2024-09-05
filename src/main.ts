@@ -53,6 +53,42 @@ function sendStaticFile(reply: http.ServerResponse, fileName: keyof typeof stati
     return reply.end();
 }
 
+async function readBody(req: http.IncomingMessage, reply: http.ServerResponse) {
+    // TODO: Better error handling
+    if (req.headers["content-type"] !== "application/json") {
+        reply.writeHead(400).end();
+        return null;
+    }
+    const buffer: Buffer[] = [];
+    let readBytes = 0;
+    for await (const chunk of req) {
+        if (!(chunk instanceof Buffer)) {
+            reply.writeHead(400).end();
+            return null;
+        }
+        readBytes += chunk.length;
+        if (readBytes > DATA_SIZE_LIMIT) {
+            reply.writeHead(413).end();
+            return null;
+        }
+        buffer.push(chunk);
+    }
+
+    const data = Buffer.concat(buffer).toString("utf8");
+
+    try {
+        const json = JSON.parse(data) as unknown;
+        if (json === null) {
+            reply.writeHead(400).end();
+            return null;
+        }
+        return json;
+    } catch (err) {
+        reply.writeHead(400).end();
+        return null;
+    }
+}
+
 async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
     if (!req.url) {
         reply.statusCode = 404;
@@ -69,17 +105,60 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
             return sendStaticFile(reply, "style.css");
         }
         else if (url.pathname === "/secret") {
-            const id = url.searchParams.get("id");
-            if (!id) {
+            return sendStaticFile(reply, "secret.html");
+        }
+    }
+    else if (req.method === "POST") {
+        if (url.pathname === "/api/create-secret") {
+            if (rateLimitPost >= REQUESTS_RATE_LIMIT) {
+                return reply.writeHead(429).end();
+            }
+            if (!req.socket.remoteAddress || rateLimitIPs.has(req.socket.remoteAddress)) {
+                return reply.writeHead(429).end();
+            }
+            rateLimitIPs.set(req.socket.remoteAddress, Date.now() + IP_RATE_LIMIT_TIME);
+            rateLimitPost++;
+
+
+            // TODO: Validation
+            const json: any = await readBody(req, reply);
+            if (!json || typeof json !== "object") {
+                return;
+            }
+
+            // Validate json
+            if (typeof json.data !== "string") {
                 return reply.writeHead(400).end();
             }
 
-            return sendStaticFile(reply, "secret.html");
-        }
-        else if (url.pathname === "/api/secret") {
-            const id = url.searchParams.get("id");
-            const authTag = url.searchParams.get("auth");
-            if (!id || !authTag) {
+            const maxViews = Number.parseInt(json.maxViews, 10);
+            if (Number.isNaN(maxViews) || maxViews <= 0 || maxViews > 100) {
+                return reply.writeHead(400).end();
+            }
+
+            const expirationLimitInDays = Number.parseInt(json.timeLimit, 10);
+            if (Number.isNaN(expirationLimitInDays) || expirationLimitInDays <= 0 || expirationLimitInDays > 30) {
+                return reply.writeHead(400).end();
+            }
+
+            try {
+                const secret = await createSecret(json.data, maxViews, Date.now() + (86400000 * expirationLimitInDays));
+                reply.writeHead(200, undefined, { "content-type": "application/json" }).write(JSON.stringify({ id: secret.id, auth: secret.authTag.toString("base64url") }));
+                return reply.end();
+            } catch (err) {
+                // console.log("[POST api/create-secret] Error:", err);
+                return reply.writeHead(500).end();
+            }
+        } else if (url.pathname === "/api/secret") {
+            // TODO: Validation
+            const json: any = await readBody(req, reply);
+            if (!json || typeof json !== "object") {
+                return;
+            }
+
+            const id = json.id;
+            const authTag = json.auth;
+            if (!id || !authTag || typeof id !== "string" || id.length !== 64 || typeof authTag !== "string" || authTag.length !== 22) {
                 return reply.writeHead(400).end();
             }
 
@@ -94,62 +173,6 @@ async function handler(req: http.IncomingMessage, reply: http.ServerResponse) {
             } catch (err) {
                 // console.error("[GET api/secret] Error:", err);
                 return reply.writeHead(400).end();
-            }
-        }
-    }
-    else if (req.method === "POST") {
-        if (url.pathname === "/api/create-secret") {
-            if (rateLimitPost >= REQUESTS_RATE_LIMIT) {
-                return reply.writeHead(429).end();
-            }
-            if (!req.socket.remoteAddress || rateLimitIPs.has(req.socket.remoteAddress)) {
-                return reply.writeHead(429).end();
-            }
-            rateLimitIPs.set(req.socket.remoteAddress, Date.now() + IP_RATE_LIMIT_TIME);
-            rateLimitPost++;
-
-            if (req.headers["content-type"] !== "application/json") {
-                return reply.writeHead(400).end();
-            }
-            const buffer: Buffer[] = [];
-            let readBytes = 0;
-            for await (const chunk of req) {
-                if (!(chunk instanceof Buffer)) {
-                    return reply.writeHead(400).end();
-                }
-                readBytes += chunk.length;
-                if (readBytes > DATA_SIZE_LIMIT) {
-                    return reply.writeHead(413).end();
-                }
-                buffer.push(chunk);
-            }
-
-            const data = Buffer.concat(buffer).toString("utf8");
-
-            try {
-                const json = JSON.parse(data);
-
-                // Validate json
-                if (!json.data || typeof json.data !== "string") {
-                    return reply.writeHead(400).end();
-                }
-
-                const maxViews = Number.parseInt(json.maxViews, 10);
-                if (Number.isNaN(maxViews) || maxViews <= 0 || maxViews > 100) {
-                    return reply.writeHead(400).end();
-                }
-
-                const expirationLimitInDays = Number.parseInt(json.timeLimit, 10);
-                if (Number.isNaN(expirationLimitInDays) || expirationLimitInDays <= 0 || expirationLimitInDays > 30) {
-                    return reply.writeHead(400).end();
-                }
-
-                const secret = await createSecret(json.data, maxViews, Date.now() + (86400000 * expirationLimitInDays));
-                reply.writeHead(200, undefined, { "content-type": "application/json" }).write(JSON.stringify({ id: secret.id, auth: secret.authTag.toString("base64url") }));
-                return reply.end();
-            } catch (err) {
-                // console.log("[POST api/create-secret] Error:", err);
-                return reply.writeHead(500).end();
             }
         }
     }
