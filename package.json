@@ -1,23 +1,24 @@
 {
-    "name": "secrets",
-    "version": "1.0.0",
-    "description": "",
-    "type": "module",
-    "main": "dist/main.js",
-    "scripts": {
-        "dev": "node dev.js",
-        "build": "tsc"
-    },
-    "keywords": [],
-    "author": "Linus Björklund",
-    "license": "MIT",
-    "devDependencies": {
-        "@types/node": "^22.13.1",
-        "@weedzcokie/concurrent-cmd": "^0.2.2",
-        "typescript": "^5.7.3"
-    },
-    "dependencies": {
-        "@libsql/client": "^0.14.0"
-    },
-    "packageManager": "pnpm@9.11.0+sha512.0a203ffaed5a3f63242cd064c8fb5892366c103e328079318f78062f24ea8c9d50bc6a47aa3567cabefd824d170e78fa2745ed1f16b132e16436146b7688f19b"
+  "name": "secrets",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "node dev.js",
+    "lint": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "Linus Björklund",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.10.4",
+    "@weedzcokie/concurrent-cmd": "^0.2.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.15"
+  },
+  "packageManager": "pnpm@10.26.2+sha512.0e308ff2005fc7410366f154f625f6631ab2b16b1d2e70238444dd6ae9d630a8482d92a451144debc492416896ed16f7b114a86ec68b8404b2443869e68ffda6"
 }
