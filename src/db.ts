@@ -1,6 +1,5 @@
-import { createClient } from "@libsql/client";
+import { DatabaseSync } from "node:sqlite";
 
-export const db = createClient({
-    url: "file:sqlite.db",
-});
+export const db = new DatabaseSync("file:sqlite.db");
 
+export const sqlTagStore = db.createTagStore();
