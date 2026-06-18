@@ -12,6 +12,7 @@ void ccmds.spawnCommand("./node_modules/.bin/tsc", [
 ]);
 
 // Wait for TSC to produce code
+// eslint-disable no-await-in-loop
 while (!fs.existsSync("./dist")) {
   await setTimeout(100);
 }

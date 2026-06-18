@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "oxc",
+    "unicorn",
+    "import",
+    "promise"
+    //"react"
+  ],
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/no-floating-promises": ["error"],
+    "typescript/no-confusing-void-expression": [
+      "off",
+      {
+        "ignoreArrowShorthand": true
+      }
+    ]
+  }
+}
