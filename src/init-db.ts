@@ -5,7 +5,7 @@ db.exec(
         id text primary key,
         data text,
         views_remaining integer not null,
-        expiration_date datetime not null default current_timestamp
-    )`,
+        expiration_date text not null default current_timestamp
+    ) strict`,
 );
 db.exec("create index secrets_idx on secrets(id)");
